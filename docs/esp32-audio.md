@@ -21,7 +21,7 @@ For Compose use `JELLYFIN_MCP_AUDIO_PUBLIC_URL=http://mcp-host:8080`. The featur
 
 Existing tools remain available:
 - `jellyfin_search` for songs and IDs.
-- `jellyfin_playlists` `list` and `get` for playlists.
+- `jellyfin_search` with `type=Playlist` for playlist IDs (works in read-only mode); `jellyfin_playlists` `list` and `get` are also available when write-capable user tools are enabled.
 - `jellyfin_music` for artists and instant mixes.
 
 New `jellyfin_audio` (read-only, part of `media` toolset):

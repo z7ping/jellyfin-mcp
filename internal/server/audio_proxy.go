@@ -89,14 +89,14 @@ func (p *audioProxy) link(itemID, title string) (*mcp.ResourceLink, error) {
 
 type audioToolArgs struct {
 	ItemID string `json:"item_id,omitempty" jsonschema:"Single audio track ID returned by jellyfin_search"`
-	PlaylistID string `json:"playlist_id,omitempty" jsonschema:"Playlist ID returned by jellyfin_playlists action=list"`
+	PlaylistID string `json:"playlist_id,omitempty" jsonschema:"Playlist ID returned by jellyfin_search with type Playlist"`
 }
 
 func (p *audioProxy) registerTool(server *mcp.Server) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name: "jellyfin_audio",
 		Title: "Audio for External Player",
-		Description: "Return playable audio ResourceLinks for a track (item_id) or ordered playlist (playlist_id). "+
+		Description: "Return playable audio ResourceLinks for a track (item_id) or ordered playlist (playlist_id). Find playlists using jellyfin_search with type Playlist, including in read-only mode. "+
 			"Use this for playing music on the assistant's own speaker. Unlike jellyfin_play it needs no Jellyfin client session. "+
 			"Each resource link is temporary and accessible only to a holder of its opaque token; do not repeat URLs to the user.",
 		InputSchema: jf.WithEnums[audioToolArgs](nil),
