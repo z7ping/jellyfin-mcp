@@ -34,6 +34,7 @@ type Config struct {
 	HTTPMode           bool
 	HTTPAddr           string
 	HTTPToken          string
+	AudioPublicURL     string
 }
 
 // ToolsetNames returns the sorted list of available toolset names and their tools.
@@ -51,7 +52,15 @@ func Run(cfg Config) {
 	go logServerVersion(client)
 
 	tracker := &subscriptionTracker{}
-	srv := newServer(cfg, client, tracker)
+	var audio *audioProxy
+	if cfg.HTTPMode && cfg.AudioPublicURL != "" {
+		var err error
+		audio, err = newAudioProxy(client, cfg.AudioPublicURL)
+		if err != nil {
+			log.Fatalf("audio proxy configuration: %v", err)
+		}
+	}
+	srv := newServerWithAudio(cfg, client, tracker, audio)
 
 	// Start resource subscription poller
 	pollerCtx, pollerCancel := context.WithCancel(context.Background())
@@ -60,7 +69,7 @@ func Run(cfg Config) {
 
 	// Run via selected transport
 	if cfg.HTTPMode {
-		runHTTP(srv, cfg.HTTPAddr, cfg.HTTPToken)
+		runHTTPWithAudio(srv, cfg.HTTPAddr, cfg.HTTPToken, audio)
 	} else {
 		runStdio(srv)
 	}
@@ -69,6 +78,12 @@ func Run(cfg Config) {
 // newServer builds the MCP server with every resource, prompt, and enabled
 // tool registered against client.
 func newServer(cfg Config, client jf.Client, tracker *subscriptionTracker) *mcp.Server {
+	return newServerWithAudio(cfg, client, tracker, nil)
+}
+
+// newServerWithAudio is used by HTTP deployments that explicitly expose a
+// reachable audio data endpoint. Ordinary stdio and MCP functionality is unchanged.
+func newServerWithAudio(cfg Config, client jf.Client, tracker *subscriptionTracker, audio *audioProxy) *mcp.Server {
 	srv := mcp.NewServer(&mcp.Implementation{
 		Name:        "jellyfin",
 		Title:       "Jellyfin Media Server",
@@ -89,7 +104,11 @@ func newServer(cfg Config, client jf.Client, tracker *subscriptionTracker) *mcp.
 	srv.AddSendingMiddleware(boundElicitation(elicitationTimeout))
 	resources.RegisterResources(srv, client)
 	prompts.RegisterPrompts(srv, client)
-	tools.RegisterTools(srv, client, tools.BuildToolFilter(cfg.Toolsets, cfg.ReadOnly))
+	enabled := tools.BuildToolFilter(cfg.Toolsets, cfg.ReadOnly)
+	tools.RegisterTools(srv, client, enabled)
+	if audio != nil && enabled("jellyfin_audio", tools.AnnotReadOnly) {
+		audio.registerTool(srv)
+	}
 	return srv
 }
 
@@ -329,7 +348,21 @@ func newHTTPServer(addr string, handler http.Handler) *http.Server {
 
 // runHTTP runs the server as a Streamable HTTP endpoint.
 func runHTTP(server *mcp.Server, addr, token string) {
-	srv := newHTTPServer(addr, newHTTPMux(server, token))
+	runHTTPWithAudio(server, addr, token, nil)
+}
+
+func newHTTPMuxWithAudio(server *mcp.Server, token string, audio *audioProxy) http.Handler {
+	if audio == nil {
+		return newHTTPMux(server, token)
+	}
+	mux := http.NewServeMux()
+	mux.Handle("/audio/", audio)
+	mux.Handle("/", newHTTPMux(server, token))
+	return mux
+}
+
+func runHTTPWithAudio(server *mcp.Server, addr, token string, audio *audioProxy) {
+	srv := newHTTPServer(addr, newHTTPMuxWithAudio(server, token, audio))
 
 	// Signal handling for graceful shutdown (HTTP only; stdio must never have this)
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
