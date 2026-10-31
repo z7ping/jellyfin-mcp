@@ -113,11 +113,13 @@ func TestRegisterTools_AllRegistered(t *testing.T) {
 		t.Fatal("ListTools:", err)
 	}
 
-	// Count expected tools from ToolsetMap
+	// Count tools registered by tools.RegisterTools. The opt-in audio
+	// HTTP data-plane tool is registered later by server.newServerWithAudio.
 	var expectedCount int
 	for _, toolNames := range tools.ToolsetMap {
 		expectedCount += len(toolNames)
 	}
+	expectedCount-- // jellyfin_audio is opt-in and registered by the HTTP server.
 
 	if len(result.Tools) != expectedCount {
 		got := make([]string, len(result.Tools))

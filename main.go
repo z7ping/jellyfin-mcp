@@ -30,6 +30,7 @@ func main() {
 	flags.BoolVar(&cfg.HTTPMode, "http", false, "run as HTTP server instead of stdio")
 	flags.StringVar(&cfg.HTTPAddr, "addr", "127.0.0.1:8080", "HTTP listen address (only used with --http)")
 	flags.StringVar(&cfg.HTTPToken, "http-token", os.Getenv("HTTP_TOKEN"), "bearer token for HTTP authentication (only used with --http; defaults to the HTTP_TOKEN environment variable, which keeps the token out of the process list)")
+	flags.StringVar(&cfg.AudioPublicURL, "audio-public-url", os.Getenv("JELLYFIN_MCP_AUDIO_PUBLIC_URL"), "public base URL for temporary MP3 playback links (HTTP mode only; opt-in)")
 
 	rootCmd.SetUsageTemplate(usageTemplate())
 
@@ -49,6 +50,7 @@ Environment variables:
   JELLYFIN_API_KEY    API key (required)
   JELLYFIN_USER_ID    User ID or username (optional; defaults to the first administrator)
   HTTP_TOKEN          Bearer token for --http (or pass --http-token)
+  JELLYFIN_MCP_AUDIO_PUBLIC_URL  Public HTTP(S) URL to this MCP server for audio resources
   TZ                  Time zone for today's date and for dates in tool inputs and results
 
 Flags:

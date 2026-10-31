@@ -26,6 +26,7 @@ var ToolsetMap = map[string][]string{
 	"media": {
 		"jellyfin_tv_shows",
 		"jellyfin_music",
+		"jellyfin_audio",
 		"jellyfin_people",
 	},
 	"user": {
